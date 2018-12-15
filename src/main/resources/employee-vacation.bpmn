@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_1gxh8gn" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="2.2.3">
+  <bpmn:collaboration id="Collaboration_0fvmp28">
+    <bpmn:participant id="Participant_1amcd0t" name="Vacation" processRef="vacationRequest" />
+  </bpmn:collaboration>
+  <bpmn:process id="vacationRequest" name="vacationRequest" isExecutable="true">
+    <bpmn:laneSet id="LaneSet_1b9q7s0">
+      <bpmn:lane id="Lane_08lmzuh" name="Employee">
+        <bpmn:flowNodeRef>StartEvent</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>modify_vacation_request</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>IntermediateThrowEvent_1v241vm</bpmn:flowNodeRef>
+      </bpmn:lane>
+      <bpmn:lane id="Lane_0xtspd3" name="Management">
+        <bpmn:flowNodeRef>handle_vacation_request</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>ExclusiveGateway_1k2scdy</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>send-email-confirmation</bpmn:flowNodeRef>
+      </bpmn:lane>
+    </bpmn:laneSet>
+    <bpmn:startEvent id="StartEvent" name="request">
+      <bpmn:outgoing>SequenceFlow_flow1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="SequenceFlow_flow5" name="resend request" sourceRef="modify_vacation_request" targetRef="handle_vacation_request">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${resendRequest == 'true'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="SequenceFlow_flow2" name="flow2" sourceRef="handle_vacation_request" targetRef="ExclusiveGateway_1k2scdy" />
+    <bpmn:sequenceFlow id="SequenceFlow_flow1" name="flow1" sourceRef="StartEvent" targetRef="handle_vacation_request" />
+    <bpmn:userTask id="handle_vacation_request" name="Handle request for vacation" camunda:assignee="kermit">
+      <bpmn:documentation>${firstName} ${lastName} would like to take ${numberOfDays} day(s) vacation.
+(Motivation: ${reason}).
+</bpmn:documentation>
+      <bpmn:extensionElements>
+        <camunda:formData>
+          <camunda:formField id="vacationApproved" label="Do you approve this vacation request?" type="boolean" defaultValue="false" />
+          <camunda:formField id="comments" label="Comment" type="string" />
+        </camunda:formData>
+        <camunda:taskListener class="com.company.vacation.listener.TaskAssignmentListener" event="assignment" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>SequenceFlow_flow1</bpmn:incoming>
+      <bpmn:incoming>SequenceFlow_flow5</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_flow2</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:userTask id="modify_vacation_request" name="Modify vacation request" camunda:assignee="${employeeId}">
+      <bpmn:documentation>Your manager has disapproved your vacation (${numberOfDays} days) request.
+                Reason: ${comments}</bpmn:documentation>
+      <bpmn:extensionElements>
+        <camunda:taskListener class="com.company.vacation.listener.TaskAssignmentListener" event="assignment" />
+        <camunda:formData>
+          <camunda:formField id="resendRequest" label="Resend request?" type="boolean" defaultValue="false" />
+          <camunda:formField id="numberOfDays" label="Days" type="long" />
+        </camunda:formData>
+        <camunda:inputOutput>
+          <camunda:outputParameter name="comments" />
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>SequenceFlow_flow4</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_flow5</bpmn:outgoing>
+      <bpmn:outgoing>SequenceFlow_flow6</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:exclusiveGateway id="ExclusiveGateway_1k2scdy" default="SequenceFlow_flow3">
+      <bpmn:incoming>SequenceFlow_flow2</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_flow3</bpmn:outgoing>
+      <bpmn:outgoing>SequenceFlow_flow4</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:serviceTask id="send-email-confirmation" name="Send email confirmation" camunda:class="com.company.vacation.diagram.EmailConfirmationService">
+      <bpmn:incoming>SequenceFlow_flow3</bpmn:incoming>
+      <bpmn:outgoing>SequenceFlow_flow7</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:intermediateThrowEvent id="IntermediateThrowEvent_1v241vm" name="end event">
+      <bpmn:incoming>SequenceFlow_flow7</bpmn:incoming>
+      <bpmn:incoming>SequenceFlow_flow6</bpmn:incoming>
+    </bpmn:intermediateThrowEvent>
+    <bpmn:sequenceFlow id="SequenceFlow_flow4" name="rejected" sourceRef="ExclusiveGateway_1k2scdy" targetRef="modify_vacation_request">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${!vacationApproved}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="SequenceFlow_flow6" name="don&#39;t resend" sourceRef="modify_vacation_request" targetRef="IntermediateThrowEvent_1v241vm">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${resendRequest == 'false'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="SequenceFlow_flow3" name="approved" sourceRef="ExclusiveGateway_1k2scdy" targetRef="send-email-confirmation" />
+    <bpmn:sequenceFlow id="SequenceFlow_flow7" name="end flow" sourceRef="send-email-confirmation" targetRef="IntermediateThrowEvent_1v241vm" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_0fvmp28">
+      <bpmndi:BPMNShape id="Participant_1amcd0t_di" bpmnElement="Participant_1amcd0t">
+        <dc:Bounds x="54" y="95" width="1020" height="540" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="StartEvent">
+        <dc:Bounds x="134" y="202" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="136" y="245" width="37" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="UserTask_0ts9bz2_di" bpmnElement="handle_vacation_request">
+        <dc:Bounds x="285" y="417" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ExclusiveGateway_1k2scdy_di" bpmnElement="ExclusiveGateway_1k2scdy" isMarkerVisible="true">
+        <dc:Bounds x="535" y="432" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="ServiceTask_14n8as8_di" bpmnElement="send-email-confirmation">
+        <dc:Bounds x="704" y="417" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="UserTask_1a6ity8_di" bpmnElement="modify_vacation_request">
+        <dc:Bounds x="510" y="180" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IntermediateThrowEvent_1v241vm_di" bpmnElement="IntermediateThrowEvent_1v241vm">
+        <dc:Bounds x="914" y="201" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="965" y="212" width="49" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SequenceFlow_0yjekp6_di" bpmnElement="SequenceFlow_flow6">
+        <di:waypoint x="610" y="219" />
+        <di:waypoint x="914" y="219" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="644" y="228" width="61" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_0jw8wie_di" bpmnElement="SequenceFlow_flow5">
+        <di:waypoint x="510" y="224" />
+        <di:waypoint x="335" y="224" />
+        <di:waypoint x="335" y="417" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="396" y="199" width="74" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_0bk03tr_di" bpmnElement="SequenceFlow_flow7">
+        <di:waypoint x="804" y="462" />
+        <di:waypoint x="932" y="462" />
+        <di:waypoint x="932" y="237" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="847" y="444" width="42" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_1plsp3l_di" bpmnElement="SequenceFlow_flow4">
+        <di:waypoint x="560" y="432" />
+        <di:waypoint x="560" y="260" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="517" y="386" width="40" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_1edtwf4_di" bpmnElement="SequenceFlow_flow3">
+        <di:waypoint x="585" y="457" />
+        <di:waypoint x="704" y="457" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="622" y="432" width="46" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_1ak2aye_di" bpmnElement="SequenceFlow_flow2">
+        <di:waypoint x="385" y="457" />
+        <di:waypoint x="535" y="457" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="467" y="439" width="26" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SequenceFlow_1y74m1j_di" bpmnElement="SequenceFlow_flow1">
+        <di:waypoint x="170" y="220" />
+        <di:waypoint x="194" y="220" />
+        <di:waypoint x="194" y="457" />
+        <di:waypoint x="285" y="457" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="154" y="379" width="25" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Lane_08lmzuh_di" bpmnElement="Lane_08lmzuh">
+        <dc:Bounds x="84" y="95" width="990" height="265" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Lane_0xtspd3_di" bpmnElement="Lane_0xtspd3">
+        <dc:Bounds x="84" y="360" width="990" height="275" />
+      </bpmndi:BPMNShape>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

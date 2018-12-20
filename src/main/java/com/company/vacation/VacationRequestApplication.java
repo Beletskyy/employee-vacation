@@ -24,17 +24,16 @@ public class VacationRequestApplication {
 
     @EventListener
     private void processPostDeploy(PostDeployEvent event) {
-//        createUser
+        // createUser
         ProcessEngine processEngine = ProcessEngines.getDefaultProcessEngine();
         IdentityService identityService = processEngine.getIdentityService();
-        String email = "john.doe@company.com";
-        User user = identityService.newUser(email);
+        User user = identityService.newUser("john");
         user.setFirstName("John");
         user.setLastName("Doe");
-        user.setEmail(email);
+        user.setEmail("john.doe@company.com");
         user.setPassword("superSecret");
         identityService.saveUser(user);
-
+        identityService.createMembership("john", "camunda-admin");
 
         Map<String, Object> params = new HashMap<>();
         params.put("employeeId", user.getId());
@@ -43,8 +42,8 @@ public class VacationRequestApplication {
         params.put("numberOfDays", 14);
         params.put("reason", "I need a break!");
 
+        // start process
         RuntimeService runtimeService = processEngine.getRuntimeService();
         runtimeService.startProcessInstanceByKey("vacationRequest", params);
     }
-
 }
